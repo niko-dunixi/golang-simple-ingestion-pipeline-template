@@ -1,0 +1,9 @@
+go 1.21.0
+
+use (
+	./dlq-consumer
+	./infrastructure
+	./lib
+	./work-consumer
+	./work-supplier
+)

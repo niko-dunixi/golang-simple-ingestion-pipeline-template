@@ -1,0 +1,13 @@
+!include ../go.just
+
+set fallback
+
+debug:
+  docker build \
+    --target=debug \
+    --build-arg TARGET_PACKAGE=work-consumer \
+    --tag work-consumer:latest .
+  docker run \
+    --rm -it \
+    -p 8080:8080 -p 40000:40000 \
+    work-consumer:latest
