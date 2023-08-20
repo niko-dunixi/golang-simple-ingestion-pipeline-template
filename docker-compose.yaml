@@ -1,0 +1,59 @@
+version: "3.8"
+
+services:
+  rabbitmq:
+    # We will use RabbitMQ locally instead of SQS
+    platform: "linux/amd64"
+    image: rabbitmq:3-management
+    hostname: 'rabbitlocal'
+    ports:
+      - 15672:15672
+      - 5672:5672
+    volumes:
+      - "rabbitmq-log:/var/log/rabbitmq"
+      - "rabbitmq-data:/var/lib/rabbitmq"
+    deploy:
+      restart_policy:
+        condition: any
+  work_supplier:
+    # platform: "linux/amd64"
+    # cap_add:
+    # - SYS_PTRACE
+    depends_on:
+      - rabbitmq
+    build:
+      context: .
+      target: main-vanilla
+      args:
+        TARGET_PACKAGE: "work-supplier"
+    environment:
+      RABBIT_SERVER_URL: amqp://guest:guest@rabbitmq:5672/
+      QUEUE_URL: rabbit://data-ingress
+    ports:
+      - "3000:3000"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+  work_consumer:
+    # platform: "linux/amd64"
+    # cap_add:
+    # - SYS_PTRACE
+    depends_on:
+      - rabbitmq
+    build:
+      context: .
+      target: main-vanilla
+      args:
+        TARGET_PACKAGE: "work-consumer"
+    environment:
+      RABBIT_SERVER_URL: amqp://guest:guest@rabbitmq:5672/
+      QUEUE_URL: rabbit://data-egress
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      
+volumes:
+  rabbitmq-data:
+  rabbitmq-log:
