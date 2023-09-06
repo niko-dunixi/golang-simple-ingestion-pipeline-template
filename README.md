@@ -12,7 +12,7 @@ It can be run either on AWS or locally via the [Go Cloud SDK](https://gocloud.de
 ## Problem
 
 Often, while discussing possible solutions for various problems a common
-pattern is brought up: We need something Lambda-like, but can do work for
+pattern is brought up: I need something Lambda-like, but can do work for
 a long period of time without interruption without keeping Lambda alive.
 This generally boils-down to Lambda dumping a payload into SQS, which a
 AWS Fargate Task can pick up and perform the work without being interrupted.
