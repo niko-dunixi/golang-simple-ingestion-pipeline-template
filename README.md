@@ -37,16 +37,15 @@ The largest barrior to implementing such a solution is often:
    * Every time I've had to reinvent this at a new organisation,
      I have been unable to reference previous details and this results
      in restarting a lot of the detail work from scratch
- * Lack of completeness or quality in off-the-shelf options
+ * Lack of completeness in off-the-shelf options/samples
+   * Many examples online leave out details and don't get past the
+     most basic 'Hello, World!' implementation which don't address
+     larger questions.
    * How do I tie in mature dependency injection into the solution?
    * How do I actually refactor common types and functions between the
      ingestion Lambda and the consuming Fargate worker?
    * How do I expand this or incorporate it into my current architecture?
      How does this get from my machine into a target environment?
-   * Many examples online leave out details for brevity or are pages of
-     copy/pasted code into a blog page without context about decision
-     trade-offs because their purpose is to be part of a blog post and
-     not part of a production solution.
 
 ## Dependencies
 You will need to install the following for your machine
