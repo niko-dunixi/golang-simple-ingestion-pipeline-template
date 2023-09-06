@@ -7,7 +7,7 @@ given request.
 It can be run either on AWS or locally via the [Go Cloud SDK](https://gocloud.dev/).
 
 ## Cut to the chase, is it good?
-🦄 Hell Yeah! 🚀
+🦄 Hell Yeah! 🚀 This is the template *I* want every time this problem comes up.
 
 ## Problem
 
