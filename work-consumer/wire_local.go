@@ -8,6 +8,8 @@ import (
 
 	"github.com/google/wire"
 	"github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib/envutil"
+	"gocloud.dev/docstore"
+	_ "gocloud.dev/docstore/mongodocstore"
 	"gocloud.dev/pubsub"
 	_ "gocloud.dev/pubsub/rabbitpubsub"
 )
@@ -26,4 +28,13 @@ func NewRabbitMQSubscription(ctx context.Context, queueURL string) (*pubsub.Subs
 func InitializeQueueSubscription(ctx context.Context, queueURL string) (*pubsub.Subscription, error) {
 	wire.Build(NewRabbitMQSubscription)
 	return &pubsub.Subscription{}, nil
+}
+
+func NewMongoCollection(ctx context.Context, collectionURL string) (*docstore.Collection, error) {
+	return docstore.OpenCollection(ctx, collectionURL)
+}
+
+func InitializeCollection(ctx context.Context, collectionURL string) (*docstore.Collection, error) {
+	wire.Build(NewMongoCollection)
+	return &docstore.Collection{}, nil
 }

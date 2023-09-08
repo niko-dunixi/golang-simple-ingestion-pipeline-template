@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin/render"
@@ -23,14 +24,35 @@ func main() {
 	initCtx = zerolog.Ctx(initCtx).With().Str("scope", "initialization").Logger().WithContext(initCtx)
 	defer initCtxCancel()
 	initLog := zerolog.Ctx(initCtx)
+	defer initLog.Info().Msg("exited")
+
+	shutdownWG := &sync.WaitGroup{}
+
 	queueURL := envutil.Must(initCtx, "QUEUE_URL")
 	topic, err := InitializeQueueSink(initCtx, queueURL)
 	if err != nil {
 		initLog.Fatal().Err(err).Msg("could not initialize topic")
 	}
+	shutdownWG.Add(1)
+	defer func() {
+		defer shutdownWG.Done()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		defer cancel()
+		topic.Shutdown(ctx)
+	}()
+
+	collectionURL := envutil.Must(initCtx, "COLLECTION_URL")
+	collection, err := InitializeCollection(initCtx, collectionURL)
+	if err != nil {
+		initLog.Fatal().Err(err).Msg("could not initialize document store")
+	}
+	shutdownWG.Add(1)
+	defer func() {
+		defer shutdownWG.Done()
+		collection.Close()
+	}()
 
 	r := chi.NewRouter()
-
 	zerologMiddleware := func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := zerolog.Ctx(r.Context()).WithContext(r.Context())
@@ -54,6 +76,7 @@ func main() {
 			ID:       uuid.New(),
 			Time:     time.Now(),
 			TaskName: taskName,
+			State:    lib.Pending,
 		}
 		jsonBytes, err := json.Marshal(payload)
 		if err != nil {
@@ -64,10 +87,20 @@ func main() {
 			return
 		}
 
-		err = topic.Send(ctx, &pubsub.Message{
+		if err := collection.Create(ctx, &payload); err != nil {
+			log.Error().Err(err).Msg("could not save payload to document storage")
+			w.WriteHeader(http.StatusFailedDependency)
+			render.JSON{
+				Data: map[string]any{
+					"error": err.Error(),
+				},
+			}.Render(w)
+			return
+		}
+		if err := topic.Send(ctx, &pubsub.Message{
 			Body: jsonBytes,
-		})
-		if err != nil {
+		}); err != nil {
+			log.Error().Err(err).Msg("could not push payload to queue")
 			w.WriteHeader(http.StatusFailedDependency)
 			render.JSON{
 				Data: map[string]any{
@@ -92,4 +125,5 @@ func main() {
 	} else if err != nil {
 		initLog.Fatal().Err(err).Msg("an error occurred and we abruptly shutdown")
 	}
+	shutdownWG.Wait()
 }

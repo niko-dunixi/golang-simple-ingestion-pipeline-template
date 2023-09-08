@@ -15,7 +15,28 @@ services:
     deploy:
       restart_policy:
         condition: any
-  work_supplier:
+  mongo:
+    # We will use Mongo locally instead of DynamoDB
+    image: mongo:7.0.1
+    container_name: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+      ME_CONFIG_MONGODB_SSLVALIDATE: false
+    ports:
+      - 27017:27017
+    volumes:
+      - mongodb-data-container:/data/db
+    deploy:
+      restart_policy:
+        condition: any
+  mongo-express:
+    image: mongo-express
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://root:password@mongo/db?authSource=admin&ssl=false
+    ports:
+      - 8081:8081
+  work-supplier:
     # platform: "linux/amd64"
     # cap_add:
     # - SYS_PTRACE
@@ -29,13 +50,15 @@ services:
     environment:
       RABBIT_SERVER_URL: amqp://guest:guest@rabbitmq:5672/
       QUEUE_URL: rabbit://data-ingress
+      MONGO_SERVER_URL: mongodb://root:password@mongo
+      COLLECTION_URL: mongo://main-db/main-collection?id_field=id
     ports:
       - "8080:8080"
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
-  work_consumer:
+  work-consumer:
     # platform: "linux/amd64"
     # cap_add:
     # - SYS_PTRACE
@@ -49,6 +72,8 @@ services:
     environment:
       RABBIT_SERVER_URL: amqp://guest:guest@rabbitmq:5672/
       QUEUE_URL: rabbit://data-egress
+      MONGO_SERVER_URL: mongodb://root:password@mongo
+      COLLECTION_URL: mongo://main-db/main-collection?id_field=id
     deploy:
       restart_policy:
         condition: on-failure
@@ -57,3 +82,4 @@ services:
 volumes:
   rabbitmq-data:
   rabbitmq-log:
+  mongodb-data-container:

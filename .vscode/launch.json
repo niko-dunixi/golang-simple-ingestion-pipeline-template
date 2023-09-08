@@ -5,6 +5,19 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "work-supplier",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "./work-supplier",
+      "env": {
+        "QUEUE_URL": "rabbit://data-ingress",
+        "RABBIT_SERVER_URL": "amqp://guest:guest@localhost:5672/",
+        "MONGO_SERVER_URL": "mongodb://root:password@127.0.0.1",
+        "COLLECTION_URL": "mongo://main-db/main-collection?id_field=id",
+      }
+    },
+    {
       "name": "work-consumer",
       "type": "go",
       "request": "launch",
@@ -12,7 +25,9 @@
       "program": "./work-consumer",
       "env": {
         "QUEUE_URL": "rabbit://data-egress",
-        "RABBIT_SERVER_URL": "amqp://guest:guest@localhost:5672/"
+        "RABBIT_SERVER_URL": "amqp://guest:guest@localhost:5672/",
+        "MONGO_SERVER_URL": "mongodb://root:password@127.0.0.1",
+        "COLLECTION_URL": "mongo://main-db/main-collection?id_field=id",
       }
     }
   ]

@@ -10,6 +10,8 @@ import (
 	"github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib/envutil"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/rs/zerolog"
+	"gocloud.dev/docstore"
+	_ "gocloud.dev/docstore/mongodocstore"
 	"gocloud.dev/pubsub"
 	_ "gocloud.dev/pubsub/rabbitpubsub"
 )
@@ -82,4 +84,13 @@ func initailizeRabbitMQ(ctx context.Context, rabbitServerURL string) error {
 func InitializeQueueSink(ctx context.Context, queueURL string) (*pubsub.Topic, error) {
 	wire.Build(NewRabbitMQSink)
 	return &pubsub.Topic{}, nil
+}
+
+func NewMongoCollection(ctx context.Context, collectionURL string) (*docstore.Collection, error) {
+	return docstore.OpenCollection(ctx, collectionURL)
+}
+
+func InitializeCollection(ctx context.Context, collectionURL string) (*docstore.Collection, error) {
+	wire.Build(NewMongoCollection)
+	return &docstore.Collection{}, nil
 }

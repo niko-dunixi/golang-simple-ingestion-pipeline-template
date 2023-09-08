@@ -42,8 +42,7 @@ clean:
   just --unstable work-supplier/clean-go
   just --unstable work-consumer/clean-go
   just --unstable infrastructure/clean-go
-  docker-compose down
-  docker volume prune --all --force
+  docker-compose down --remove-orphans --volumes
 
 synth:
   just --unstable infrastructure/synth

@@ -14,6 +14,7 @@ import (
 	"github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib/envutil"
 	_ "github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib/zerologutil"
 	"github.com/rs/zerolog"
+	"gocloud.dev/docstore"
 	"gocloud.dev/pubsub"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,6 +30,11 @@ func main() {
 	queue, err := InitializeQueueSubscription(initCtx, queueURL)
 	if err != nil {
 		initLog.Fatal().Err(err).Msg("failed to initialize queue client")
+	}
+	collectionURL := envutil.Must(initCtx, "COLLECTION_URL")
+	collection, err := InitializeCollection(initCtx, collectionURL)
+	if err != nil {
+		initLog.Fatal().Err(err).Msg("could not initialize document collection store")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -66,7 +72,7 @@ func main() {
 	})
 	eg.Go(func() error {
 		ctx := zerolog.Ctx(ctx).With().Str("loop", "processing").Logger().WithContext(ctx)
-		if err := processingLoop(ctx, messagesChannel); err != nil {
+		if err := processingLoop(ctx, collection, messagesChannel); err != nil {
 			return fmt.Errorf("a problem occurred in the proccessing loop")
 		}
 		return nil
@@ -105,7 +111,7 @@ func receivingLoop(ctx context.Context, queue *pubsub.Subscription, messagesChan
 	}
 }
 
-func processingLoop(ctx context.Context, messagesChannel <-chan *pubsub.Message) error {
+func processingLoop(ctx context.Context, collection *docstore.Collection, messagesChannel <-chan *pubsub.Message) error {
 	log := zerolog.Ctx(ctx)
 	log.Info().Msg("Starting loop")
 	for {
@@ -120,16 +126,29 @@ func processingLoop(ctx context.Context, messagesChannel <-chan *pubsub.Message)
 			}
 			return nil
 		case message := <-messagesChannel:
-			msgCtx := log.With().Str("message_id", message.LoggableID).Logger().WithContext(ctx)
-			if err := processMessage(msgCtx, message); err != nil {
-				log.Error().Err(err).Msg("could not process message")
-			}
+			msgCtx, msgCtxCancel := context.WithTimeout(
+				log.With().Str("message_id", message.LoggableID).Logger().WithContext(ctx),
+				time.Second*15,
+			)
+			func() {
+				defer msgCtxCancel()
+				if err := processMessage(msgCtx, collection, message); err != nil {
+					log.Error().Err(err).Msg("could not process message")
+				}
+			}()
 		}
 	}
 }
 
-func processMessage(ctx context.Context, message *pubsub.Message) error {
+func processMessage(ctx context.Context, collection *docstore.Collection, message *pubsub.Message) error {
 	log := zerolog.Ctx(ctx)
+	isAcked := false
+	defer func() {
+		// Fallback in case of failure
+		if !isAcked && message.Nackable() {
+			message.Nack()
+		}
+	}()
 	body := message.Body
 	if body == nil {
 		return fmt.Errorf("mesage body was nil")
@@ -142,7 +161,13 @@ func processMessage(ctx context.Context, message *pubsub.Message) error {
 	}
 	// All work now done, be sure to acknoledge the message so that it
 	// is removed from the queue
-	defer message.Ack()
+	if err := collection.Update(ctx, &payload, docstore.Mods{"State": lib.Complete}); err != nil {
+		return fmt.Errorf("could not store document: %w", err)
+	}
+	defer func() {
+		message.Ack()
+		isAcked = true
+	}()
 	log.Info().Any("payload", payload).Msg("successfully processed")
 	return nil
 }
