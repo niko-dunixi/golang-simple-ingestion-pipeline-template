@@ -13,6 +13,7 @@ import (
 	"github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib"
 	"github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib/envutil"
 	_ "github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/lib/zerologutil"
+	"github.com/niko-dunixi/golang-simple-ingestion-pipeline-template/work-consumer/loremmarkov"
 	"github.com/rs/zerolog"
 	"gocloud.dev/docstore"
 	"gocloud.dev/pubsub"
@@ -159,9 +160,15 @@ func processMessage(ctx context.Context, collection *docstore.Collection, messag
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return fmt.Errorf("could not parse JSON from message body: %w", err)
 	}
+	// Perform the actual work we want to do asynchronously from the client
+	markovChain := loremmarkov.New(ctx)
+	generatedText, err := markovChain.Generate(ctx)
+	if err != nil {
+		return fmt.Errorf("could not generate text: %w", err)
+	}
 	// All work now done, be sure to acknoledge the message so that it
 	// is removed from the queue
-	if err := collection.Update(ctx, &payload, docstore.Mods{"State": lib.Complete}); err != nil {
+	if err := collection.Update(ctx, &payload, docstore.Mods{"State": lib.Complete, "Message": generatedText}); err != nil {
 		return fmt.Errorf("could not store document: %w", err)
 	}
 	defer func() {

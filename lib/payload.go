@@ -47,5 +47,6 @@ type PayloadItem struct {
 	ID       uuid.UUID    `json:"id"`
 	Time     time.Time    `json:"time"`
 	TaskName string       `json:"task_name"`
+	Message  string       `json:"message,omitempty"`
 	State    PayloadState `json:"state"`
 }
