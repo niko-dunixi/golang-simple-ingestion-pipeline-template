@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/exp/slices"
 )
 
@@ -34,6 +35,10 @@ func (ps PayloadState) MarshalJSON() ([]byte, error) {
 	return json.Marshal(ps.String())
 }
 
+// func (ps PayloadState) MarshalBSON() ([]byte, error) {
+// 	return bson.Marshal(ps.String())
+// }
+
 func (ps *PayloadState) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
@@ -43,10 +48,32 @@ func (ps *PayloadState) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// func (ps *PayloadState) UnmarshalBSON(data []byte) error {
+// 	var value string
+// 	if err := bson.Unmarshal(data, &value); err != nil {
+// 		return err
+// 	}
+// 	*ps = ToPayloadState(value)
+// 	return nil
+// }
+
 type PayloadItem struct {
-	ID       uuid.UUID    `json:"id"`
-	Time     time.Time    `json:"time"`
-	TaskName string       `json:"task_name"`
-	Message  string       `json:"message,omitempty"`
-	State    PayloadState `json:"state"`
+	ID      uuid.UUID    `json:"id"`
+	Time    time.Time    `json:"time"`
+	Message *string      `json:"message,omitempty"`
+	State   PayloadState `json:"state"`
 }
+
+func (pi PayloadItem) MarshalBSON() ([]byte, error) {
+	return bson.Marshal(bson.D{
+		{"id", pi.ID.String()},
+	})
+}
+
+// func (pi *PayloadItem) MarshalBSON() ([]byte, error) {
+// 	return bson.Marshal(map[string]any{
+// 		"id": pi.ID.String(),
+// 		"time": pi.Time,
+
+// 	})
+// }

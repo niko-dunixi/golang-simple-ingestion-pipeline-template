@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -68,15 +69,56 @@ func main() {
 			},
 		}.Render(w)
 	})
-	r.Post("/task/{name}", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/task/{id}", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		log := zerolog.Ctx(ctx)
-		taskName := chi.URLParam(r, "name")
+		idParamValue := chi.URLParam(r, "id")
+		id, err := uuid.Parse(idParamValue)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("ID must be a UUID"))
+			log.Warn().Err(err).Str("id", idParamValue).Msg("client provided invalid id")
+			return
+		}
+
+		// payload := lib.PayloadItem{
+		// 	ID: id,
+		// }
+		// if err := collection.Get(ctx, &payload); err != nil {
+		// 	if code := gcerrors.Code(err); code == gcerrors.NotFound {
+		// 		w.WriteHeader(http.StatusNotFound)
+		// 		w.Write([]byte("document was not found"))
+		// 		log.Warn().Err(err).Msg("document was not found")
+		// 		return
+		// 	}
+		// }
+
+		payload := lib.PayloadItem{}
+		iter := collection.Query().Where("ID", "=", id.String()).Limit(1).Get(ctx)
+		defer iter.Stop()
+		if err := iter.Next(ctx, &payload); err != nil {
+			if err == io.EOF {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("document was not found"))
+				log.Warn().Err(err).Msg("document was not found")
+				return
+			}
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("could not get document from data store"))
+			log.Panic().Err(err).Msg("could not get document from data store")
+		}
+
+		render.JSON{
+			Data: payload,
+		}.Render(w)
+	})
+	r.Post("/task", func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		log := zerolog.Ctx(ctx)
 		payload := lib.PayloadItem{
-			ID:       uuid.New(),
-			Time:     time.Now(),
-			TaskName: taskName,
-			State:    lib.Pending,
+			ID:    uuid.New(),
+			Time:  time.Now(),
+			State: lib.Pending,
 		}
 		jsonBytes, err := json.Marshal(payload)
 		if err != nil {
@@ -84,7 +126,6 @@ func main() {
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte("500"))
 			log.Panic().Err(err).Msg("could not serialize json")
-			return
 		}
 
 		if err := collection.Create(ctx, &payload); err != nil {
@@ -110,11 +151,12 @@ func main() {
 			return
 		}
 
+		taskID := payload.ID
 		response := map[string]any{
-			"task_name": taskName,
+			"task_id": taskID,
 		}
 
-		log.Info().Any("task_name", taskName).Msg("responding to client for task")
+		log.Info().Any("task_id", taskID).Msg("responding to client for task")
 		render.JSON{
 			Data: response,
 		}.Render(w)
