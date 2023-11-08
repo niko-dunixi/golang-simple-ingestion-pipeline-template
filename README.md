@@ -9,7 +9,11 @@ It can be run either on
   * Locally via the [Go Cloud SDK](https://gocloud.dev/) and Docker
 
 ## Cut to the chase, is it good?
-🦄 Hell Yeah! 🚀 This is the template *I* want every time this problem comes up.
+🦄 Hell Yeah! 🚀
+This is the template *I* want every time this problem comes up. It addresses:
+* Infrastructure
+* Dependency Injection
+  * Wiring to either real resources or local ones
 
 ## Problem
 
@@ -47,10 +51,10 @@ The largest barrior to implementing such a solution is often:
      most basic 'Hello, World!' implementation which don't address
      larger questions.
    * How do I tie in mature dependency injection into the solution?
-   * How do I actually refactor common types and functions between the
-     ingestion Lambda and the consuming Fargate worker?
-   * How do I expand this or incorporate it into my current architecture?
-     How does this get from my machine into a target environment?
+      * How do I actually refactor common types and functions between the
+        ingestion Lambda and the consuming Fargate worker?
+      * How do I expand this or incorporate it into my current architecture?
+        How does this get from my machine into a target environment?
 
 ## Dependencies
 You will need to install the following for your machine
@@ -119,3 +123,15 @@ The fastest way to get things up and running:
 
 `$ just fmt`
  * Will run `go fmt` upon all sub directories
+
+## FAQ
+
+### Why is the `go.work` file commited?
+
+While it has been discouraged at times, it is not
+cannonically or authoritatively incorrect to do.
+It makes working with multi-module monorepo projects,
+such as this one, vastly simpler to do. The discussion
+is still open and if it proves incorrect iterative
+course correct will occur.
+- [proposal: ref/mod: mention whether go.work files should be checked into VCS #53502](https://github.com/golang/go/issues/53502#issuecomment-1204134618)
