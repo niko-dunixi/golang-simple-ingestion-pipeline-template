@@ -3,7 +3,7 @@ version: "3.8"
 services:
   rabbitmq:
     # We will use RabbitMQ locally instead of SQS
-    platform: "linux/amd64"
+    platform: "linux/amd64/v8"
     image: rabbitmq:3-management
     hostname: 'rabbitlocal'
     ports:
@@ -16,12 +16,13 @@ services:
       restart_policy:
         condition: any
   mongo:
+    platform: "linux/amd64"
     # We will use Mongo locally instead of DynamoDB
-    image: mongo:7.0.1
+    image: mongo:4.4.18
     container_name: mongo
     environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_ROOT_USERNAME: devuser
+      MONGO_INITDB_ROOT_PASSWORD: d3vpass
       ME_CONFIG_MONGODB_SSLVALIDATE: false
     ports:
       - 27017:27017
@@ -31,13 +32,24 @@ services:
       restart_policy:
         condition: any
   mongo-express:
-    image: mongo-express
+    platform: "linux/amd64/v8"
+    depends_on:
+      - mongo
+    image: mongo-express:1.0.0-20
     environment:
-      ME_CONFIG_MONGODB_URL: mongodb://root:password@mongo/db?authSource=admin&ssl=false
+      ME_CONFIG_MONGODB_URL: mongodb://devuser:d3vpass@mongo/db?authSource=admin&ssl=false
     ports:
       - 8081:8081
+    command: >
+      bash -c "
+        while ! nc -z mongo 27017; do
+          echo sleeping;
+          sleep 1;
+        done;
+      npm start;
+      "
   work-supplier:
-    # platform: "linux/amd64"
+    platform: "linux/amd64/v2"
     # cap_add:
     # - SYS_PTRACE
     depends_on:
@@ -50,7 +62,7 @@ services:
     environment:
       RABBIT_SERVER_URL: amqp://guest:guest@rabbitmq:5672/
       QUEUE_URL: rabbit://data-ingress
-      MONGO_SERVER_URL: mongodb://root:password@mongo
+      MONGO_SERVER_URL: mongodb://devuser:d3vpass@mongo
       COLLECTION_URL: mongo://main-db/main-collection?id_field=id
     ports:
       - "8080:8080"
@@ -59,7 +71,7 @@ services:
         condition: on-failure
         delay: 5s
   work-consumer:
-    # platform: "linux/amd64"
+    platform: "linux/amd64/v2"
     # cap_add:
     # - SYS_PTRACE
     depends_on:
@@ -72,7 +84,7 @@ services:
     environment:
       RABBIT_SERVER_URL: amqp://guest:guest@rabbitmq:5672/
       QUEUE_URL: rabbit://data-egress
-      MONGO_SERVER_URL: mongodb://root:password@mongo
+      MONGO_SERVER_URL: mongodb://devuser:d3vpass@mongo
       COLLECTION_URL: mongo://main-db/main-collection?id_field=id
     deploy:
       restart_policy:

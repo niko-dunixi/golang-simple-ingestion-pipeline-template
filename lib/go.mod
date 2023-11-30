@@ -6,6 +6,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/rs/zerolog v1.30.0
 	github.com/stretchr/testify v1.8.4
+	go.mongodb.org/mongo-driver v1.13.0
 )
 
 require (
